@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/leaanthony/clir"
+	"github.com/vulpemventures/taxi-cli/config"
 )
 
 func main() {
@@ -11,8 +12,8 @@ func main() {
 	var from, to, asset, psetBase64Topup, psetBase64Sign, privateKey string
 	var amount int
 	var regtest bool = false
-	var explorerURL string = "http://localhost:3001"
-	var taxiURL string = "http://localhost:8080"
+	var explorerURL string = config.GetString(config.ExplorerEndpointKey)
+	var taxiURL string = config.GetString(config.TaxiEndpointKey)
 
 	// Create new cli
 	cli := clir.NewCli("Taxi CLI", "A command line interface to work with Liquid Taxi", "v0.0.1")
@@ -52,7 +53,7 @@ func main() {
 	signCommand.StringFlag("pset", "(REQUIRED) Partial Signed Elements Transaction base64 encoded", &psetBase64Sign)
 	signCommand.StringFlag("key", "(REQUIRED) EC Private Key (hex encoded)", &privateKey)
 	// Optional Flags
-	signCommand.BoolFlag("regtest", "Work with local regtest", &regtest)
+	signCommand.BoolFlag("regtest", "Sign a regtest transaction", &regtest)
 	// Action
 	signCommand.Action(func() error {
 		return signAction(psetBase64Sign, privateKey, regtest)
