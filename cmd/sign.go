@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 
+	"github.com/btcsuite/btcutil"
 	"github.com/tiero/ocean/pkg/keypair"
 	"github.com/tiero/ocean/pkg/partial"
 	"github.com/vulpemventures/go-elements/network"
@@ -26,26 +28,32 @@ func signAction(psetBase64 string, privateKey string, regtest bool) error {
 		return fmt.Errorf("decode: %w", err)
 	}
 
-	keyPair, err := keypair.FromPrivateKey(privateKey)
+	var keyPair *keypair.KeyPair
+	keyPair, err = keypair.FromPrivateKey(privateKey)
 	if err != nil {
-		return fmt.Errorf("private key: %w", err)
+		// Try to see if it's WIF
+		wif, err2 := btcutil.DecodeWIF(privateKey)
+		if err2 != nil {
+			return fmt.Errorf("private key: %w", err)
+		}
+		keyPair, _ = keypair.FromPrivateKey(hex.EncodeToString(wif.PrivKey.Serialize()))
 	}
 	pay := payment.FromPublicKey(keyPair.PublicKey, &currentNetwork, nil)
 
-	psetWithFees := &partial.Partial{Data: decoded}
+	psetWithFees := &partial.Partial{Data: decoded, Network: &currentNetwork}
 	for i := 0; i < len(psetWithFees.Data.Inputs); i++ {
 		currInput := psetWithFees.Data.Inputs[i]
 		if bytes.Equal(currInput.WitnessUtxo.Script, pay.Script) {
 			err := psetWithFees.SignWithPrivateKey(i, keyPair)
 			if err != nil {
-				return fmt.Errorf("sign: %w", err)
+				return fmt.Errorf("SignWithPrivateKey: %w", err)
 			}
 		}
 	}
 	pFinalized := psetWithFees.Data
 	err = pset.FinalizeAll(pFinalized)
 	if err != nil {
-		return fmt.Errorf("sign: %w", err)
+		return fmt.Errorf("FinalizeAll: %w", err)
 	}
 
 	if !pFinalized.IsComplete() {
@@ -67,13 +75,13 @@ func signAction(psetBase64 string, privateKey string, regtest bool) error {
 	// Extract the final signed transaction from the Pset wrapper.
 	finalTx, err := pset.Extract(pFinalized)
 	if err != nil {
-		return fmt.Errorf("sign: %w", err)
+		return fmt.Errorf("Extract: %w", err)
 	}
 
 	// Serialize the transaction and try to broadcast.
 	txHex, err := finalTx.ToHex()
 	if err != nil {
-		return fmt.Errorf("sign: %w", err)
+		return fmt.Errorf("ToHex: %w", err)
 	}
 
 	fmt.Println()

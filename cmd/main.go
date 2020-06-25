@@ -9,7 +9,7 @@ import (
 
 func main() {
 	// Declaration of flag variables
-	var from, to, asset, psetBase64Topup, psetBase64Sign, privateKey string
+	var from, to, asset, psetBase64Topup, psetBase64Sign, privateKey, blindingKey string
 	var amount int
 	var regtest bool = false
 	var explorerURL string = config.GetString(config.ExplorerEndpointKey)
@@ -30,9 +30,11 @@ func main() {
 	createCmd.BoolFlag("regtest", "Work with local regtest", &regtest)
 	createCmd.StringFlag("taxi", "Taxi endpoint API", &taxiURL)
 	createCmd.StringFlag("explorer", "Electrs REST API", &explorerURL)
+	createCmd.StringFlag("blinding", "Blinding Key", &blindingKey)
+
 	// Action
 	createCmd.Action(func() error {
-		return createAction(from, to, asset, amount, regtest, explorerURL, taxiURL)
+		return createAction(from, to, asset, amount, blindingKey, regtest, explorerURL, taxiURL)
 	})
 
 	// Topup subcommand
